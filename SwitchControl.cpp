@@ -8,7 +8,7 @@
 static DebugHelper Debug("SwitchControl");
 
 
-EVENT_ID SwitchControl::SWITCHCONTROL_EVENT = EventSource::GenerateEventID();
+//EVENT_ID SwitchControl::SWITCHCONTROL_EVENT = EventSource::GenerateEventID();
 
 
 SwitchControl::SwitchControl(uint8_t pin, bool usePullUp, uint8_t debounceTime)
@@ -55,7 +55,7 @@ uint8_t SwitchControl::Read()
         _state.debounceState = state;
         _lastDebounceTime = now;
         
-		Debug.Log("Read => Bounce! state=%i", state);
+        Debug.Log("Read => Bounce! state=%i", state);
     }
 
     // If the last recorded de-bounce state is different from the last valid switch 
@@ -71,7 +71,7 @@ uint8_t SwitchControl::Read()
             _state.lastState = _state.debounceState;
             switchState = (_state.lastState == ON) ? CLOSED : OPENED;
             
-			Debug.Log("Read => switchState=%i, _state.lastState=%i", switchState, _state.lastState);
+            Debug.Log("Read => switchState=%i, _state.lastState=%i", switchState, _state.lastState);
             
             Event event(SWITCHCONTROL_EVENT, switchState);
             
@@ -83,8 +83,48 @@ uint8_t SwitchControl::Read()
 }
 
 
+/*******************************************************************************
+ Alternate Read routine that uses a different debounce algorithm.
+
+ Returns the most recent stable state of the switch, 1 = closed, 0 = open. 
+*******************************************************************************/
+//uint8_t SwitchControl::Read() 
+//{
+//    return _state.lastState;
+//} 
+
+
 void SwitchControl::Poll()
 {
     Read();
+//    // Alternate debounce algorithm
+//    uint32_t now = millis();
+//
+//    if ((now - _lastDebounceTime) < 3) return;
+//
+//    _lastDebounceTime = now;
+//
+//    bool lastState = _state.lastState;
+//
+//    // read the switch input pin (and invert if necessary)
+//    int reading = (digitalRead(_state.pin) == HIGH) ^ _state.inverted;
+//    
+//    // Update debounce status 
+//    // XORing the current reading with the last stable state produces a 1 
+//    // when different and 0 when same. Then shift that result into the LSBit
+//    // of _debounceState. As long as the switch is bouncing _debounceState 
+//    // will contain a mix of 1s and 0s. When the switch stabilizes in its 
+//    // new state _debounceState will eventually contains all 1s. 
+//    _debunceState = ((_debunceState << 1) | (reading ^ lastState)); 
+//
+//    // If the new switch state has been different than the last switch state
+//    // for 16 consectutive readings then it has stabilized and we can flip 
+//    // the switch to the new state.
+//    if (_debunceState == 0xff)
+//    {
+//         Debug.Log("Read => newState=%i, lastState=%i", (int)reading, (int)lastState);
+//         _state.lastState = reading;
+//         DispatchEvent(SWITCHCONTROL_EVENT, (int)lastState);
+//    }
 }
 
