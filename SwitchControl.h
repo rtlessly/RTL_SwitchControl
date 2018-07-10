@@ -78,7 +78,7 @@ class SwitchControl : public EventSource
     //****************************************************************************
     // EventSource implementation
     //****************************************************************************
-    public: virtual void Poll();
+    public: void Poll();
 };
 
 #endif
