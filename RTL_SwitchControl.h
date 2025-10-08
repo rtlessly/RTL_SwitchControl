@@ -14,8 +14,8 @@ Header file for the TaskManager class.
   
   The button/switch can is connected to a digital GPIO pin, and can use either the 
   the internal pull-up resistor or an external pull-down resistor.  By default, the
-  internal pull-up resistor is used. If using an external pull-down resistor is used
-  then pass false for the activeLow parameter to the constructor. 
+  internal pull-up resistor is used. If using an external pull-down resistor then
+  pass false for the activeLow parameter to the constructor. 
 
   When activeLow is true, one terminal of the switch should be connected to the
   input pin and the other to ground. No external resistor is required. 
@@ -41,15 +41,18 @@ public:
 
     // The LSB indicates if the switch is ON (1) or OFF (0)
     // The 2nd LSB indicates if a state transition occurred to the state in the LSB
-    enum : byte
+    enum : uint8_t
     {
-        OFF      = 0b00000000,   // steady state OFF (Alias for LOW)
-        ON       = 0b00000001,   // steady state ON (Alias for HIGH)
-        OPENED   = 0b00000010,   // transition to OFF state
-        CLOSED   = 0b00000011,   // transition to ON state 
-        RELEASED = 0b00000010,   // transition to OFF state (alias for OPENED)
-        PRESSED  = 0b00000011,   // transition to ON state (alias for CLOSED)
-        TOGGLED  = 0b00000010,   // Indicates a state transition occurred
+        OFF        = 0b00000000,   // steady state OFF (Alias for LOW)
+        ON         = 0b00000001,   // steady state ON (Alias for HIGH)
+        TOGGLED    = 0b00000010,   // Indicates a state transition occurred
+        OPENED     = 0b00000010,   // transition to OFF state
+        CLOSED     = 0b00000011,   // transition to ON state 
+        RELEASED   = 0b00000010,   // transition to OFF state (alias for OPENED)
+        PRESSED    = 0b00000011,   // transition to ON state (alias for CLOSED)
+        LONG_PRESS = 0b10000000,   // Indicates a long press was detected.
+        LONG_PRESS_PRESSED  = LONG_PRESS | ON,
+        LONG_PRESS_RELEASED = LONG_PRESS | RELEASED,
     };
 
     //**************************************************************************
@@ -78,6 +81,10 @@ public:
 
     inline bool IsActiveLow() { return _state.activeLow; }
 
+    uint8_t DetectLongPress(const uint32_t longPressTime = 2000); // milliseconds
+
+    uint8_t DetectLongPress(uint8_t buttonState, const uint32_t longPressTime = 2000); // milliseconds
+
     // TaskBase implementation
     void Poll() override;
 
@@ -90,15 +97,17 @@ private:
         uint8_t pin              : 5; // Digital pin the switch is connected to
         uint8_t activeLow        : 1; // Indicates if the switch is active (ON) on LOW reading
         uint8_t currentState     : 1; // Current switch state (1=ON, 0=OFF)
+        uint8_t longPress        : 1; // Indicates a long press was detected.
     }
     _state;
     
-    float _debounceFilter;
+    float    _debounceFilter;
+    uint32_t _lastPressTime;
 
 private:
     // Reads the switch input pin and inverts the sense if active low so that a 
     // return value of 1 always means the switch is activated (ON) and 0 means 
-    // the switch is inactived (OFF).
+    // the switch is inactivated (OFF).
     inline uint8_t readPin()
     {
         uint8_t pinState = digitalRead(_state.pin);

@@ -1,7 +1,7 @@
 /*******************************************************************************
 Implementation file for the TaskManager class.
 *******************************************************************************/
-#define DEBUG 1
+#define DEBUG 0
 #define DEBUG_PLOT 0
 
 #include <Arduino.h>
@@ -10,6 +10,7 @@ Implementation file for the TaskManager class.
 
 
 DEFINE_CLASSNAME(SwitchControl);
+
 
 //******************************************************************************
 // Constructor
@@ -21,6 +22,7 @@ SwitchControl::SwitchControl(uint8_t pin, bool activeLow)
 {
     _state.pin = pin;
     _state.activeLow = activeLow;
+    _state.longPress = 0;
 
     // Initialize the switch pin.
     pinMode(pin, activeLow ? INPUT_PULLUP : INPUT);
@@ -28,7 +30,9 @@ SwitchControl::SwitchControl(uint8_t pin, bool activeLow)
     // Get the initial pin state
     _state.currentState = readPin();
     _debounceFilter = _state.currentState;
+    _lastPressTime = 0xFFFFFFFF;
 }
+
 
 void SwitchControl::Poll()
 {
@@ -80,22 +84,54 @@ uint8_t SwitchControl::Read()
     // threshold cannot change the switch state once the switch has toggled at that threshold.
     if (switchState == OFF && _debounceFilter > 0.9)
     {
-        TRACE(Logger(_classname_, this) << F("TOGGLED ON: newState=") << pinState << F(", currentState=") << _state.currentState << endl;);
-        switchState = ON | TOGGLED;
+        switchState = PRESSED;
+        TRACE(Logger(_classname_, this) << F("TOGGLED ON: newState=") << pinState << F(", priorState=") << _state.currentState << F(", switchState=") << switchState << endl;);
         _state.currentState = ON;
+        _state.longPress = 0;
+        _lastPressTime = millis();
         _debounceFilter = _state.currentState;
         StateChanged.Post(this, switchState);
     }
     else if (switchState == ON && _debounceFilter < 0.1)
     {
-        TRACE(Logger(_classname_, this) << F("TOGGLED OFF: newState=") << pinState << F(", currentState=") << _state.currentState << endl;);
-        switchState = OFF | TOGGLED;
+        switchState = RELEASED;
+        TRACE(Logger(_classname_, this) << F("TOGGLED OFF: newState=") << pinState << F(", priorState=") << _state.currentState << F(", switchState=") << switchState << endl;);
         _state.currentState = OFF;
         _debounceFilter = _state.currentState;
         StateChanged.Post(this, switchState);
     }
 
     return switchState;
+}
+
+
+uint8_t SwitchControl::DetectLongPress(const uint32_t longPressTime)
+{
+    return DetectLongPress(Read(), longPressTime);
+}
+
+
+uint8_t SwitchControl::DetectLongPress(uint8_t buttonState, const uint32_t longPressTime)
+{
+    auto newButtonState = buttonState;
+    
+    if ((buttonState & ON))
+    {
+        if ((millis() - _lastPressTime) >= longPressTime && !_state.longPress)
+        {
+            TRACE(Logger() << F("Long press detected") << endl;);
+            _state.longPress = 1;
+            newButtonState = LONG_PRESS_PRESSED;
+        }
+    }
+    else if (_state.longPress)
+    {
+        TRACE(Logger() << F("Long press release detected") << endl;);
+        _state.longPress = 0;
+        newButtonState = LONG_PRESS_RELEASED;
+    }    
+
+    return newButtonState;
 }
 
 
@@ -162,7 +198,7 @@ uint8_t SwitchControl::Read()
     // off (0) and nothing in-between. This allows us to perform the math using fast integer
     // arithmetic instead of slower floating-point arithmetic. 
     // 
-    // First, we use 255 to represent the "on" (1) state of the filter, and 0 to represnt the 
+    // First, we use 255 to represent the "on" (1) state of the filter, and 0 to represent the 
     // off state. These values can be represented in a single byte, which saves considerable
     // memory (compared to floating-point values) yet is still big enough to give good
     // resolution to the filter. The filtered value will vary between these 2 extremes. 
