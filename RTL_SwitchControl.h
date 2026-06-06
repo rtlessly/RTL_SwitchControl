@@ -2,7 +2,7 @@
 #ifndef _SwitchControl_h_
 #define _SwitchControl_h_
 /*******************************************************************************
-Header file for the TaskManager class.
+Header file for the SwitchControl class.
 *******************************************************************************/
 #include <RTL_Stdlib.h>
 #include <RTL_Event.h>
@@ -10,7 +10,7 @@ Header file for the TaskManager class.
 
 /*******************************************************************************
   A component for reading the state of a switch or button connected to a GPIO
-  pin on the Arduino. 
+  pin on the Arduino, with appropriate debouncing. 
   
   The button/switch can is connected to a digital GPIO pin, and can use either the 
   the internal pull-up resistor or an external pull-down resistor.  By default, the
@@ -21,8 +21,8 @@ Header file for the TaskManager class.
   input pin and the other to ground. No external resistor is required. 
 
   Alternatively, if an activeLow is false, one terminal of the switch should be
-  connected to the pin and the other to Vcc (+5v), and an external resistor should   
-  be connected between the pin and ground. 
+  connected to the input pin and the other to Vcc (+5v), and an external resistor 
+  should be connected between the pin and ground. 
 
   Regardless of active low or active high, the SwitchControl class always returns
   1 when the switch is ON and 0 when the switch is OFF.
@@ -39,8 +39,9 @@ public:
     //**************************************************************************
     static constexpr EVENT_ID SWITCH_EVENT = (EventSourceID::Switch | EventCode::DefaultEvent);
 
-    // The LSB indicates if the switch is ON (1) or OFF (0)
-    // The 2nd LSB indicates if a state transition occurred to the state in the LSB
+    // Switch states. The LSB indicates if the switch is ON (1) or OFF (0)
+    // The 2nd LSB indicates if a state transition occurred to the state in the LSB.
+    // The MSB indicates if a long press was detected.
     enum : uint8_t
     {
         OFF        = 0b00000000,   // steady state OFF (Alias for LOW)
@@ -51,10 +52,13 @@ public:
         RELEASED   = 0b00000010,   // transition to OFF state (alias for OPENED)
         PRESSED    = 0b00000011,   // transition to ON state (alias for CLOSED)
         LONG_PRESS = 0b10000000,   // Indicates a long press was detected.
-        LONG_PRESS_PRESSED  = LONG_PRESS | ON,
+        LONG_PRESS_PRESSED  = LONG_PRESS | PRESSED,
+        LONG_PRESS_ON       = LONG_PRESS | ON,
         LONG_PRESS_RELEASED = LONG_PRESS | RELEASED,
+        LONG_PRESS_OFF      = LONG_PRESS | OFF,
     };
 
+    
     //**************************************************************************
     // Events
     //**************************************************************************
@@ -75,13 +79,13 @@ public:
     // Public Methods
     //****************************************************************************
 public: 
-    uint8_t Read();
+    uint8_t Read(const uint32_t delayTime=0, const uint32_t repeatTime=0); // milliseconds
 
     inline uint8_t ReadImmediate() { return readPin(); };
 
     inline bool IsActiveLow() { return _state.activeLow; }
 
-    uint8_t DetectLongPress(const uint32_t longPressTime = 2000); // milliseconds
+    uint8_t DetectLongPress(const uint32_t longPressTime = 1000); // milliseconds
 
     uint8_t DetectLongPress(uint8_t buttonState, const uint32_t longPressTime = 2000); // milliseconds
 

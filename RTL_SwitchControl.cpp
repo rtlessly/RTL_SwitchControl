@@ -1,5 +1,5 @@
 /*******************************************************************************
-Implementation file for the TaskManager class.
+Implementation file for the SwitchControl class.
 *******************************************************************************/
 #define DEBUG 0
 #define DEBUG_PLOT 0
@@ -40,12 +40,12 @@ void SwitchControl::Poll()
 }
 
 
-uint8_t SwitchControl::Read()
+uint8_t SwitchControl::Read(const uint32_t delayTime, const uint32_t repeatTime)
 {
     //TRACE(Logger(_classname_, __func__) << endl;)
 
     // Initialize the return value to the current switch state
-    auto switchState = _state.currentState;
+    auto switchState = _state.currentState | (_state.longPress ? LONG_PRESS : 0);;
 
     // read the switch input pin
     auto pinState = readPin();
@@ -87,20 +87,43 @@ uint8_t SwitchControl::Read()
         switchState = PRESSED;
         TRACE(Logger(_classname_, this) << F("TOGGLED ON: newState=") << pinState << F(", priorState=") << _state.currentState << F(", switchState=") << switchState << endl;);
         _state.currentState = ON;
-        _state.longPress = 0;
-        _lastPressTime = millis();
-        _debounceFilter = _state.currentState;
+        _state.longPress    = 0;
+        _lastPressTime      = millis();
+        _debounceFilter     = _state.currentState;
         StateChanged.Post(this, switchState);
     }
     else if (switchState == ON && _debounceFilter < 0.1)
     {
-        switchState = RELEASED;
+        switchState = _state.longPress ? LONG_PRESS_RELEASED : RELEASED;
         TRACE(Logger(_classname_, this) << F("TOGGLED OFF: newState=") << pinState << F(", priorState=") << _state.currentState << F(", switchState=") << switchState << endl;);
         _state.currentState = OFF;
-        _debounceFilter = _state.currentState;
+        _state.longPress    = 0;
+        _debounceFilter     = _state.currentState;
         StateChanged.Post(this, switchState);
     }
-
+    else if (_state.currentState == ON && delayTime > 0 && repeatTime > 0)
+    {
+        if ((millis() - _lastPressTime) >= delayTime)
+        {
+            switchState = PRESSED;
+            TRACE(Logger() << F("Repeat press detected") << endl;);
+            _state.longPress = 0;
+            _lastPressTime  += repeatTime;
+            StateChanged.Post(this, switchState);
+        }
+    }
+    else if (_state.currentState == ON && delayTime > 0 && !_state.longPress)
+    {
+        if ((millis() - _lastPressTime) >= delayTime)
+        {
+            switchState = LONG_PRESS_PRESSED;
+            TRACE(Logger() << F("Long press detected") << endl;);
+            _state.currentState = ON;
+            _state.longPress    = 1;
+            StateChanged.Post(this, switchState);
+        }
+    }
+    
     return switchState;
 }
 
