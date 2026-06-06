@@ -14,13 +14,13 @@ DEFINE_CLASSNAME(SwitchControl);
 
 //******************************************************************************
 // Constructor
-// If activeLow is true, then the digital pin is initialized with the internal
-// pull-up resistor. Otherwise, it is initialized as a normal input, which assumes
-// an external pull-DOWN resistor is being used.
+// If activeLow is true (default), then the digital pin is initialized with the
+// internal pull-up resistor. Otherwise, it is initialized as a normal input,
+// which assumes an external pull-down resistor is being used.
 //******************************************************************************
 SwitchControl::SwitchControl(uint8_t pin, bool activeLow)
 {
-    _state.pin = pin;
+    _state.pin       = pin;
     _state.activeLow = activeLow;
     _state.longPress = 0;
 
@@ -29,8 +29,8 @@ SwitchControl::SwitchControl(uint8_t pin, bool activeLow)
 
     // Get the initial pin state
     _state.currentState = readPin();
-    _debounceFilter = _state.currentState;
-    _lastPressTime = 0xFFFFFFFF;
+    _debounceFilter     = _state.currentState;
+    _lastPressTime      = 0xFFFFFFFF;
 }
 
 
