@@ -43,7 +43,8 @@ void SwitchControl::Poll()
 uint8_t SwitchControl::Read(const uint32_t delayTime, const uint32_t repeatTime)
 {
     //TRACE(Logger(_classname_, __func__) << endl;)
-
+    auto now = millis();
+    
     // Initialize the return value to the current switch state
     auto switchState = _state.currentState | (_state.longPress ? LONG_PRESS : 0);;
 
@@ -81,14 +82,14 @@ uint8_t SwitchControl::Read(const uint32_t delayTime, const uint32_t repeatTime)
     // to on; and vice-versa when the filtered value drops below the lower threshold and the switch 
     // is currently ON. So once a state change occurs at one threshold, the state cannot change 
     // again until the filter value exceeds the opposite threshold. Thus, transients across a 
-    // threshold cannot change the switch state once the switch has toggled at that threshold.
+    // threshold boundary cannot change the switch state once the it has toggled at that threshold.
     if (switchState == OFF && _debounceFilter > 0.9)
     {
         switchState = PRESSED;
         TRACE(Logger(_classname_, this) << F("TOGGLED ON: newState=") << pinState << F(", priorState=") << _state.currentState << F(", switchState=") << switchState << endl;);
         _state.currentState = ON;
         _state.longPress    = 0;
-        _lastPressTime      = millis();
+        _lastPressTime      = now;
         _debounceFilter     = _state.currentState;
         StateChanged.Post(this, switchState);
     }
@@ -103,18 +104,18 @@ uint8_t SwitchControl::Read(const uint32_t delayTime, const uint32_t repeatTime)
     }
     else if (_state.currentState == ON && delayTime > 0 && repeatTime > 0)
     {
-        if ((millis() - _lastPressTime) >= delayTime)
+        if ((now - _lastPressTime) >= delayTime)
         {
             switchState = PRESSED;
             TRACE(Logger() << F("Repeat press detected") << endl;);
             _state.longPress = 0;
-            _lastPressTime  += repeatTime;
+            _lastPressTime   = now - delayTime + repeatTime;
             StateChanged.Post(this, switchState);
         }
     }
     else if (_state.currentState == ON && delayTime > 0 && !_state.longPress)
     {
-        if ((millis() - _lastPressTime) >= delayTime)
+        if ((now - _lastPressTime) >= delayTime)
         {
             switchState = LONG_PRESS_PRESSED;
             TRACE(Logger() << F("Long press detected") << endl;);
@@ -128,12 +129,14 @@ uint8_t SwitchControl::Read(const uint32_t delayTime, const uint32_t repeatTime)
 }
 
 
+// Deprecated - long presses are now directly handled in Read()
 uint8_t SwitchControl::DetectLongPress(const uint32_t longPressTime)
 {
     return DetectLongPress(Read(), longPressTime);
 }
 
 
+// Deprecated - long presses are now directly handled in Read()
 uint8_t SwitchControl::DetectLongPress(uint8_t buttonState, const uint32_t longPressTime)
 {
     auto newButtonState = buttonState;
