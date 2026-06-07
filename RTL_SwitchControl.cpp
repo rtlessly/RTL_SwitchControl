@@ -109,7 +109,7 @@ uint8_t SwitchControl::Read(const uint32_t delayTime, const uint32_t repeatTime)
             switchState = PRESSED;
             TRACE(Logger() << F("Repeat press detected") << endl;);
             _state.longPress = 0;
-            _lastPressTime   = now - delayTime + repeatTime;
+            _lastPressTime  += repeatTime;
             StateChanged.Post(this, switchState);
         }
     }
