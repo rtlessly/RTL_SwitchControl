@@ -91,22 +91,18 @@ uint8_t SwitchControl::update(uint32_t delayTime, const uint32_t repeatTime)
     if (switchState == OFF && debounceFilter >= 0.9)
     {
         TRACE(Logger(_classname_, this) << F("TOGGLED ON: newState=") << pinState << F(", priorState=") << state.currentState << F(", switchState=") << switchState << endl;);
-        switchState = PRESSED;
-        state.currentState = ON;
-        debounceFilter     = 1.0F;
-        state.longPress    = 0;
-        state.repeating    = 0;
-        lastPressTime      = now;
+        switchState     = PRESSED;
+        state.repeating = 0;
+        debounceFilter  = 1.0F;
+        lastPressTime   = now;
         StateChanged.Post(this, switchState);
     }
     else if ((switchState & ON) && debounceFilter <= 0.1)
     {
         TRACE(Logger(_classname_, this) << F("TOGGLED OFF: newState=") << pinState << F(", priorState=") << state.currentState << F(", switchState=") << switchState << endl;);
-        switchState = state.longPress ? LONG_PRESS_RELEASED : RELEASED;
-        state.currentState = OFF;
-        debounceFilter     = 0.0F;
-        state.longPress    = 0;
-        state.repeating    = 0;
+        switchState     = state.longPress ? LONG_PRESS_RELEASED : RELEASED;
+        state.repeating = 0;
+        debounceFilter  = 0.0F;
         StateChanged.Post(this, switchState);
     }
     else if (state.currentState == ON && repeatTime > 0)
@@ -116,7 +112,7 @@ uint8_t SwitchControl::update(uint32_t delayTime, const uint32_t repeatTime)
         if (!state.repeating && (now - lastPressTime) >= delayTime)
         {
             TRACE(Logger() << F("Repeat start press detected") << endl;);
-            switchState      = PRESSED;
+            switchState     = PRESSED;
             state.repeating = 1;
             lastPressTime   = now;
             StateChanged.Post(this, switchState);
@@ -124,7 +120,7 @@ uint8_t SwitchControl::update(uint32_t delayTime, const uint32_t repeatTime)
         else if (state.repeating && (now - lastPressTime) >= repeatTime)
         {
             TRACE(Logger() << F("Repeated press detected") << endl;);
-            switchState    = PRESSED;
+            switchState   = PRESSED;
             lastPressTime = now;
             StateChanged.Post(this, switchState);
         }
@@ -134,13 +130,16 @@ uint8_t SwitchControl::update(uint32_t delayTime, const uint32_t repeatTime)
         if ((now - lastPressTime) >= delayTime)
         {
             TRACE(Logger() << F("Long press detected") << endl;);
-            switchState         = LONG_PRESS_PRESSED;
-            state.currentState = ON;
-            state.longPress    = 1;
+            switchState = LONG_PRESS_PRESSED;
             StateChanged.Post(this, switchState);
         }
     }
-    
+
+    // Update the state
+    state.currentState = (switchState & ON) != 0;
+    state.toggled      = (switchState & TOGGLED) != 0;
+    state.longPress    = (switchState & LONG_PRESS) != 0;
+        
     return switchState;
 }
 

@@ -9,25 +9,25 @@ Header file for the SwitchControl class.
 #include <RTL_TaskManager.h>
 
 /*******************************************************************************
-  A component for reading the state of a switch or button connected to a GPIO
+  A component for reading the state of a switch or pushbutton connected to a GPIO
   pin on the Arduino, with appropriate debouncing. 
   
   The button/switch can is connected to a digital GPIO pin, and can use either the 
   the internal pull-up resistor or an external pull-down resistor.  By default, the
   internal pull-up resistor is used. If using an external pull-down resistor then
-  pass false for the activeLow parameter to the constructor. 
+  pass `false` for the `activeLow` parameter to the constructor. 
 
-  When activeLow is true, one terminal of the switch should be connected to the
+  When `activeLow` is `true`, one terminal of the switch should be connected to the
   input pin and the other to ground. No external resistor is required. 
 
-  Alternatively, if an activeLow is false, one terminal of the switch should be
+  Alternatively, if an `activeLow` is `false`, one terminal of the switch should be
   connected to the input pin and the other to Vcc (+5v), and an external resistor 
   (10K - 50K) should be connected between the pin and ground. 
 
-  Regardless of active low or active high, the SwitchControl class always returns
+  Regardless of active low or active high, the `SwitchControl` class always returns
   1 when the switch is ON and 0 when the switch is OFF.
     
-  Each SwitchControl object uses 10 bytes of data storage on an ATMega328P (i.e.,
+  Each `SwitchControl` object uses 10 bytes of data storage on an ATMega328P (i.e.,
   an Arduino Uno or similar 8-bit processors). More space may be used on other
   micro-controller architectures that require word-boundary alignments.
 *******************************************************************************/
@@ -41,18 +41,21 @@ public:
     //**************************************************************************
     static constexpr EVENT_ID SWITCH_EVENT = (EventSourceID::Switch | EventCode::DefaultEvent);
 
-    // Switch states. The LSB indicates if the switch is ON (1) or OFF (0)
-    // The 2nd LSB indicates if a state transition occurred to the state in the LSB.
-    // The MSB indicates if a long press was detected.
+    // Switch states. 
+    // - The LSB indicates if the switch is ON (1) or OFF (0)
+    // - The 2nd LSB indicates if a state transition occurred to the state in the LSB.
+    // - The MSB indicates if a long press was detected.
     enum : uint8_t
     {
         OFF        = 0b00000000,   // steady state OFF (Alias for LOW)
         ON         = 0b00000001,   // steady state ON (Alias for HIGH)
         TOGGLED    = 0b00000010,   // Indicates a state transition occurred
-        OPENED     = 0b00000010,   // transition to OFF state
-        CLOSED     = 0b00000011,   // transition to ON state 
-        RELEASED   = 0b00000010,   // transition to OFF state (alias for OPENED)
-        PRESSED    = 0b00000011,   // transition to ON state (alias for CLOSED)
+        OPENED     = 0b00000010,   // Transition to OFF state
+        CLOSED     = 0b00000011,   // Transition to ON state 
+        TOGGLE_OFF = OPENED,       // Transition to OFF state (Alias for OPENED)
+        TOGGLE_ON  = CLOSED,       // Transition to ON state (Alias for CLOSED)
+        RELEASED   = OPENED,       // Transition to OFF state (alias for OPENED)
+        PRESSED    = CLOSED,       // Transition to ON state (alias for CLOSED)
         LONG_PRESS = 0b10000000,   // Indicates a long press was detected.
         LONG_PRESS_PRESSED  = LONG_PRESS | PRESSED,
         LONG_PRESS_ON       = LONG_PRESS | ON,
@@ -192,6 +195,20 @@ public:
     {
         return update(delayTime, repeatTime);
     };
+    
+    /****************************************************************************
+     * Returns the current state of the switch as of the last call to `update()`.
+     *
+     * @return A bitmask composed of the switch-state constants (`OFF`, `ON`,
+     *         `PRESSED`, `RELEASED`, `LONG_PRESS_PRESSED`, etc.).     
+     ****************************************************************************/
+    inline uint8_t getState() 
+    {
+        auto switchState = state.currentState | (state.longPress ? LONG_PRESS : 0)
+                                              | (state.toggled ? TOGGLED : 0);
+        
+        return switchState; 
+    };
 
     //****************************************************************************
     // Internal State
@@ -201,6 +218,7 @@ private:
     {
         uint8_t activeLow        : 1; // Indicates if the switch is active (ON) on LOW reading
         uint8_t currentState     : 1; // Current switch state (1=ON, 0=OFF)
+        uint8_t toggled          : 1; // Indicates if the switch was toggled on the last call to update()
         uint8_t longPress        : 1; // Indicates a long press was detected.
         uint8_t repeating        : 1; // Indicates a repeat press is in progress.
     }
