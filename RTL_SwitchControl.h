@@ -1,3 +1,7 @@
+//******************************************************************************
+// Copyright (c) 2026 Roger T Lessly
+// Licensed under the MIT License. See LICENSE.txt file in the project root for details.
+//******************************************************************************
 #pragma once
 #ifndef _SwitchControl_h_
 #define _SwitchControl_h_

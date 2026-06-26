@@ -1,3 +1,7 @@
+//******************************************************************************
+// Copyright (c) 2026 Roger T Lessly
+// Licensed under the MIT License. See LICENSE.txt file in the project root for details.
+//******************************************************************************
 /*******************************************************************************
 Implementation file for the SwitchControl class.
 *******************************************************************************/
@@ -20,10 +24,11 @@ DEFINE_CLASSNAME(SwitchControl);
 //******************************************************************************
 SwitchControl::SwitchControl(uint8_t _pin, bool activeLow)
 {
-    pin              = _pin;
-    state.activeLow  = activeLow;
-    state.longPress  = 0;
-    state.repeating  = 0;
+    pin                = _pin;
+    state.activeLow    = activeLow;
+    state.toggled      = 0;
+    state.longPress    = 0;
+    state.repeating    = 0;
 
     // Initialize the switch pin.
     pinMode(_pin, activeLow ? INPUT_PULLUP : INPUT);
@@ -88,7 +93,7 @@ uint8_t SwitchControl::update(uint32_t delayTime, const uint32_t repeatTime)
     // a state change occurs at one threshold, the state cannot change again until the filter
     // value exceeds the opposite threshold. Thus, transients across a threshold boundary 
     // cannot change the switch state once the it has toggled at that threshold.
-    if (switchState == OFF && debounceFilter >= 0.9)
+    if (!(switchState & ON) && debounceFilter >= 0.9)
     {
         TRACE(Logger(_classname_, this) << F("TOGGLED ON: newState=") << pinState << F(", priorState=") << state.currentState << F(", switchState=") << switchState << endl;);
         switchState     = PRESSED;
